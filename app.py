@@ -67,50 +67,41 @@ st.markdown("""
 # --- LOGIQUE IA ---
 def get_ai_response(user_input):
     try:
-        # 1. Chargement des données
-        df_context = pd.read_csv("master_fusion_golden_journey.csv").head(5).to_string()
-        
-        # 2. Configuration
+        # 1. Configuration
         api_key = st.secrets["GEMINI_API_KEY"]
         genai.configure(api_key=api_key)
         
-        # 3. Liste des modèles à tester par ordre de préférence
-        model_names = ['gemini-1.5-flash', 'gemini-pro']
-        
-        model = None
-        for name in model_names:
-            try:
-                model = genai.GenerativeModel(name)
-                # Test rapide pour voir si le modèle répond
-                test_prompt = "Dis ok"
-                model.generate_content(test_prompt)
-                break # Si ça marche, on garde celui-là
-            except:
-                continue
-        
-        if model is None:
-            return "Erreur : Aucun modèle IA n'est accessible avec cette clé API."
+        # 2. CHARGEMENT DES DONNÉES
+        try:
+            df_context = pd.read_csv("master_fusion_golden_journey.csv").head(5).to_string()
+        except:
+            df_context = "Données indisponibles."
 
-        # 4. Le vrai Prompt
+        # 3. AUTO-DÉTECTION DU MODÈLE (La solution au bug 404)
+        available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+        
+        if not available_models:
+            return "Aucun modèle de génération trouvé pour cette clé API."
+        
+        # On choisit le meilleur modèle disponible (Flash 1.5 de préférence, sinon le premier de la liste)
+        selected_model_name = next((m for m in available_models if "1.5-flash" in m), available_models[0])
+        
+        model = genai.GenerativeModel(selected_model_name)
+
+        # 4. LE PROMPT
         prompt = f"""
         Tu es l'IA de luxe "Golden Journey". 
         Ton rôle est de créer une expérience fluide entre Vol, Voiture et Soin.
-        
         DONNÉES : {df_context}
-        
         CLIENT : {user_input}
-        
-        INSTRUCTIONS :
-        - Analyse si le client est pressé, fatigué ou en quête de sportivité.
-        - Propose une Audi spécifique et un soin spécifique tirés des données.
-        - Ton : Très haut de gamme, court et efficace.
+        Réponds avec élégance, luxe et précision.
         """
         
         response = model.generate_content(prompt)
         return response.text
 
     except Exception as e:
-        return f"Note du Concierge : Nous rencontrons une maintenance technique. (Détails : {str(e)})"
+        return f"Erreur système (Modèle utilisé: {selected_model_name if 'selected_model_name' in locals() else 'Aucun'}) : {str(e)}"
 
 # --- INTERFACE ---
 st.markdown("<h1>Golden Journey</h1>", unsafe_allow_html=True)

@@ -66,17 +66,36 @@ st.markdown("""
 
 # --- LOGIQUE IA ---
 def get_ai_response(user_input):
-    # Charge tes données (simplifié pour l'exemple)
-    df = pd.read_csv("master_fusion_golden_journey.csv").head(3).to_string()
-    
-    api_key = st.secrets["GEMINI_API_KEY"]
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-1.5-flash')
-    
-    prompt = f"Tu es l'IA Golden Journey. Un client dit: '{user_input}'. Utilise ces données: {df}. Réponds avec luxe et précision."
-    
-    response = model.generate_content(prompt)
-    return response.text
+    try:
+        # 1. Chargement sécurisé des données
+        df_context = pd.read_csv("master_fusion_golden_journey.csv").head(3).to_string()
+        
+        # 2. Configuration de l'API
+        api_key = st.secrets["GEMINI_API_KEY"]
+        genai.configure(api_key=api_key)
+        
+        # 3. Test avec le modèle le plus stable
+        # Note: On utilise 'gemini-1.5-flash' qui est gratuit et rapide
+        model = genai.GenerativeModel('gemini-1.5-flash') 
+        
+        prompt = f"""
+        Tu es l'IA de luxe "Golden Journey". 
+        Réponds au client en utilisant ces données : {df_context}.
+        Client : {user_input}
+        Réponse (ton élégant et professionnel) :
+        """
+        
+        response = model.generate_content(prompt)
+        return response.text
+
+    except Exception as e:
+        # Si 'gemini-1.5-flash' échoue, on tente 'gemini-pro' (l'ancien standard)
+        try:
+            model = genai.GenerativeModel('gemini-pro')
+            response = model.generate_content(user_input)
+            return response.text
+        except:
+            return f"Désolé, j'ai un petit souci technique avec mon moteur IA. (Erreur: {str(e)})"
 
 # --- INTERFACE ---
 st.markdown("<h1>Golden Journey</h1>", unsafe_allow_html=True)

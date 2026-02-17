@@ -67,35 +67,50 @@ st.markdown("""
 # --- LOGIQUE IA ---
 def get_ai_response(user_input):
     try:
-        # 1. Chargement sécurisé des données
-        df_context = pd.read_csv("master_fusion_golden_journey.csv").head(3).to_string()
+        # 1. Chargement des données
+        df_context = pd.read_csv("master_fusion_golden_journey.csv").head(5).to_string()
         
-        # 2. Configuration de l'API
+        # 2. Configuration
         api_key = st.secrets["GEMINI_API_KEY"]
         genai.configure(api_key=api_key)
         
-        # 3. Test avec le modèle le plus stable
-        # Note: On utilise 'gemini-1.5-flash' qui est gratuit et rapide
-        model = genai.GenerativeModel('gemini-1.5-flash') 
+        # 3. Liste des modèles à tester par ordre de préférence
+        model_names = ['gemini-1.5-flash', 'gemini-pro']
         
+        model = None
+        for name in model_names:
+            try:
+                model = genai.GenerativeModel(name)
+                # Test rapide pour voir si le modèle répond
+                test_prompt = "Dis ok"
+                model.generate_content(test_prompt)
+                break # Si ça marche, on garde celui-là
+            except:
+                continue
+        
+        if model is None:
+            return "Erreur : Aucun modèle IA n'est accessible avec cette clé API."
+
+        # 4. Le vrai Prompt
         prompt = f"""
         Tu es l'IA de luxe "Golden Journey". 
-        Réponds au client en utilisant ces données : {df_context}.
-        Client : {user_input}
-        Réponse (ton élégant et professionnel) :
+        Ton rôle est de créer une expérience fluide entre Vol, Voiture et Soin.
+        
+        DONNÉES : {df_context}
+        
+        CLIENT : {user_input}
+        
+        INSTRUCTIONS :
+        - Analyse si le client est pressé, fatigué ou en quête de sportivité.
+        - Propose une Audi spécifique et un soin spécifique tirés des données.
+        - Ton : Très haut de gamme, court et efficace.
         """
         
         response = model.generate_content(prompt)
         return response.text
 
     except Exception as e:
-        # Si 'gemini-1.5-flash' échoue, on tente 'gemini-pro' (l'ancien standard)
-        try:
-            model = genai.GenerativeModel('gemini-pro')
-            response = model.generate_content(user_input)
-            return response.text
-        except:
-            return f"Désolé, j'ai un petit souci technique avec mon moteur IA. (Erreur: {str(e)})"
+        return f"Note du Concierge : Nous rencontrons une maintenance technique. (Détails : {str(e)})"
 
 # --- INTERFACE ---
 st.markdown("<h1>Golden Journey</h1>", unsafe_allow_html=True)
